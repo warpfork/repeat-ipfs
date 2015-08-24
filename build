@@ -1,0 +1,104 @@
+#!/bin/bash
+#
+# Repeatable cross-plat builds for IPFS.
+#
+# (Fortunately this isn't too tricky, because
+# the golang compiler is readily deterministic
+# and go-ipfs has vendored all of its dependencies.)
+#
+set -euo pipefail
+
+export PATH=$PWD/bootstrap/bin:$PATH
+
+
+
+### Where shall we go today?
+WarehouseKind=${1:-"tar"}
+WarehouseCoords=${2:-"file+ca://./wares/"}
+Commit=${Commit:-"a05208797408e6bcd2867668ead6f6e31b5d0eac"}
+mkdir -p wares
+echo "WarehouseKind   = ${WarehouseKind}"
+echo "WarehouseCoords = ${WarehouseCoords}"
+echo "Repeatr Binary  = $(which repeatr)"
+echo "Repeatr Version = $(repeatr version)"
+echo "IPFS Commit     = ${Commit}"
+echo "=========================="
+echo
+
+
+targetArchs=()
+targetArchs+=("GOOS=linux GOARCH=amd64")
+targetArchs+=("GOOS=linux GOARCH=arm")
+
+Reports=()
+
+for targetArch in "${targetArchs[@]}"; do
+	echo "building for $targetArch >>>"
+	eval $targetArch
+	
+	Script="$(cat <<-'EOF'
+		#!/bin/bash
+		set -euo pipefail
+		set -x
+		
+		echo GOOS=$GOOS
+		echo GOARCH=$GOARCH
+		
+		export GOROOT=/app/go/go
+		export PATH=$PATH:/app/go/go/bin
+		
+		export GOPATH=/task/ipfs
+		time make install
+	EOF
+	)"
+	Script="$(echo "${Script}" | jq -s -R .)"
+	Formula="$(cat <<-EOF
+	{
+		"inputs": [{
+			"type": "tar",
+			"mount": "/",
+			"hash": "lzcqJKln2_H4TIoizNBCr0qoh8u_Nb_LRwARTZL2RumfbChX031pVl46dcSCG4q3",
+			"silo": "http+ca://repeatr.s3.amazonaws.com/assets/"
+		},{
+			"type": "tar",
+			"mount": "/app/go/",
+			"hash": "vbl0TwPjBrjoph65IaWxOy-Yl0MZXtXEDKcxodzY0_-inUDq7rPVTEDvqugYpJAH",
+			"silo": "https://storage.googleapis.com/golang/go1.5.linux-amd64.tar.gz"
+		},{
+			"type": "git",
+			"mount": "/task/ipfs/src/github.com/ipfs/go-ipfs/",
+			"hash": "${Commit}",
+			"silo": "https://github.com/ipfs/go-ipfs.git"
+		}],
+		"action": {
+			"cwd": "/task/ipfs/src/github.com/ipfs/go-ipfs/",
+			"env": {
+				"GOOS": "${GOOS}",
+				"GOARCH": "${GOARCH}"
+			},
+			"command": [ "/bin/bash", "-c", ${Script} ]
+		},
+		"outputs": [{
+			"type": "${WarehouseKind}",
+			"mount": "/task/ipfs/bin/",
+			"filters": [
+				"uid 10100",
+				"gid 10100",
+				"mtime"
+			],
+			"silo": "${WarehouseCoords}"
+		}]
+	}
+	EOF
+	)"
+	Output="$(time repeatr run -i <(echo "${Formula}") | tee /dev/fd/2)"
+	Reports+=("Commit=${Commit} ${targetArch}"$'\t'"   =>   $(jq .[].hash <<<"$Output")")
+	echo "<<< done!"
+	echo
+done
+
+
+echo "Final report >>>"
+printf '%s\n' "${Reports[@]}"
+echo "<<< that's all folks"
+echo
