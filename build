@@ -98,7 +98,7 @@ for targetArch in "${targetArchs[@]}"; do
 	EOF
 	)"
 	Output="$(time repeatr run -i <(echo "${Formula}") | tee /dev/fd/2)"
-	Reports+=("Commit=${Commit} ${targetArch}"$'\t'"   =>   $(jq .[].hash <<<"$Output")")
+	Reports+=("Commit=${Commit} ${targetArch}   "$'\t'"=>   $(jq .[].hash <<<"$Output")")
 	echo "<<< done!"
 	echo
 done
