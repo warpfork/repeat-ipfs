@@ -28,7 +28,13 @@ echo
 
 targetArchs=()
 targetArchs+=("GOOS=linux GOARCH=amd64")
+targetArchs+=("GOOS=linux GOARCH=386")
 targetArchs+=("GOOS=linux GOARCH=arm")
+targetArchs+=("GOOS=darwin GOARCH=amd64")
+targetArchs+=("GOOS=darwin GOARCH=386")
+#targetArchs+=("GOOS=darwin GOARCH=arm") # unsupported
+#targetArchs+=("GOOS=windows GOARCH=amd64") # unsupported
+#targetArchs+=("GOOS=windows GOARCH=386") # unsupported
 
 Reports=()
 
