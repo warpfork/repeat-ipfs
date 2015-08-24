@@ -33,15 +33,16 @@ targetArchs+=("GOOS=linux GOARCH=arm")
 targetArchs+=("GOOS=darwin GOARCH=amd64")
 targetArchs+=("GOOS=darwin GOARCH=386")
 #targetArchs+=("GOOS=darwin GOARCH=arm") # unsupported
-#targetArchs+=("GOOS=windows GOARCH=amd64") # unsupported
-#targetArchs+=("GOOS=windows GOARCH=386") # unsupported
+targetArchs+=("GOOS=windows GOARCH=amd64 MAKECMD=nofuse")
+targetArchs+=("GOOS=windows GOARCH=386 MAKECMD=nofuse")
 
 Reports=()
 
 for targetArch in "${targetArchs[@]}"; do
 	echo "building for $targetArch >>>"
 	eval $targetArch
-	
+	MAKECMD=${MAKECMD:-"install"}
+
 	Script="$(cat <<-'EOF'
 		#!/bin/bash
 		set -euo pipefail
@@ -54,7 +55,7 @@ for targetArch in "${targetArchs[@]}"; do
 		export PATH=$PATH:/app/go/go/bin
 		
 		export GOPATH=/task/ipfs
-		time make install
+		time make $MAKECMD
 	EOF
 	)"
 	Script="$(echo "${Script}" | jq -s -R .)"
@@ -80,7 +81,8 @@ for targetArch in "${targetArchs[@]}"; do
 			"cwd": "/task/ipfs/src/github.com/ipfs/go-ipfs/",
 			"env": {
 				"GOOS": "${GOOS}",
-				"GOARCH": "${GOARCH}"
+				"GOARCH": "${GOARCH}",
+				"MAKECMD": "${MAKECMD}"
 			},
 			"command": [ "/bin/bash", "-c", ${Script} ]
 		},
