@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# Repeatable cross-plat builds for IPFS.
+# Repeatable builds for IPFS, including cross-compilation.
 #
 # (Fortunately this isn't too tricky, because
 # the golang compiler is readily deterministic
